@@ -1,3 +1,5 @@
+
+const logger = require('../services/logger');
 const Activities = require('../modules/admin/activities/services/activitiesService');
 
 class BaseController {
@@ -33,18 +35,22 @@ class BaseController {
 
   async logActivity(req, moduleName, moduleId, action, description) {
     try {
-      if (req.admin && req.admin._id) {
+      const user = req.admin || req.user;
+      if (process.env.ACTIVITIES_ENABLE === 'true' && user && user._id) {
         await Activities.create({
-          user_id: req.admin._id,
+          user_id: user._id,
           module_name: moduleName,
           module_id: moduleId,
           action: action,
           description: description,
           ip: req.headers?.['x-forwarded-for'] || req.connection?.remoteAddress || req.ip,
         });
+        logger.info(`[logActivity Debug] Successfully logged activity!`);
+      } else {
+        logger.info(`[logActivity Debug] Skipped because neither req.admin nor req.user is found.`);
       }
     } catch (error) {
-      console.error(`Failed to log activity for ${moduleName}:`, error.message);
+      logger.error(`[logActivity Error] Failed to log activity for ${moduleName}: ${error.message}`);
     }
   }
 }

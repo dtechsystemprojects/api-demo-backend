@@ -64,7 +64,6 @@ function generateController(modulePath, camelName, pascalName, rootPath) {
   createDirIfNotExists(dir);
   const content = `const { BaseController } = require('${rootPath}core');
   const ${pascalName}Service = require('../services/${camelName}Service');
-  const Activities = require('../../activities/services/activitiesService');
 
 class ${pascalName}Controller extends BaseController {
   async getAll(req, res) {
@@ -92,14 +91,7 @@ class ${pascalName}Controller extends BaseController {
     try {
       const data = await ${pascalName}Service.create(req.body);
       // Log Activities //
-      await Activities.create({
-        user_id: req.admin._id,
-        module_name: ${pascalName},
-        module_id: data._id,
-        action: 'CREATE',
-        description: req.body,
-        ip: req.connection.remoteAddress,
-      });
+      await this.logActivity(req, ${pascalName}, data._id, 'CREATE', req.body);
       this.success(res, data, '${pascalName} created successfully', 201);
     } catch (error) {
       this.error(res, error.message, 400);
@@ -110,14 +102,7 @@ class ${pascalName}Controller extends BaseController {
     try {
       const data = await ${pascalName}Service.update(req.params.id, req.body);
       // Log Activities //
-      await Activities.create({
-        user_id: req.admin._id,
-        module_name: ${pascalName},
-        module_id: req.params.id,
-        action: 'UPDATE',
-        description: req.body,
-        ip: req.connection.remoteAddress,
-      });
+      await this.logActivity(req, ${pascalName}, req.params.id, 'UPDATE', req.body);
       this.success(res, data, '${pascalName} updated successfully');
     } catch (error) {
       this.error(res, error.message, 400);
@@ -129,14 +114,7 @@ class ${pascalName}Controller extends BaseController {
       const status = req.body.status === 1 || req.body.status === true;
       const data = await ${pascalName}Service.status(req.params.id, status);
       //  Log Activities //
-      await Activities.create({
-        user_id: req.admin._id,
-        module_name: ${pascalName},
-        module_id: req.params.id,
-        action: 'STATUS',
-        description: req.body,
-        ip: req.connection.remoteAddress,
-      });
+      await this.logActivity(req, ${pascalName}, req.params.id, 'STATUS', req.body);
       this.success(res, data, '${pascalName} status updated successfully');
     } catch (error) {
       this.error(res, error.message, 400);
@@ -147,14 +125,7 @@ class ${pascalName}Controller extends BaseController {
     try {
       const data = await ${pascalName}Service.getById(req.params.id);
       // Log Activities //
-      await Activities.create({
-        user_id: req.admin._id,
-        module_name: ${pascalName},
-        module_id: req.params.id,
-        action: 'DELETE',
-        description: data,
-        ip: req.connection.remoteAddress,
-      });
+      await this.logActivity(req, ${pascalName}, req.params.id, 'DELETE', data);
       await ${pascalName}Service.delete(req.params.id);
       this.success(res, null, '${pascalName} deleted successfully');
     } catch (error) {
@@ -289,17 +260,18 @@ function generateRoutes(modulePath, camelName, pascalName, rootPath) {
   createDirIfNotExists(dir);
   const content = `const express = require('express');
 const ${camelName}Controller = require('../controllers/${camelName}Controller');
-const { validate, authenticate } = require('${rootPath}middlewares');
+const { validate, authenticate, permission } = require('${rootPath}middlewares');
 const ${camelName}Validator = require('../validators/${camelName}Validator');
+const { moduleName, type } = require('../config/${camelName}Config');
 
 const router = express.Router();
 
-router.get('/', authenticate, ${camelName}Controller.getAll.bind(${camelName}Controller));
-router.get('/:id', authenticate, ${camelName}Controller.getById.bind(${camelName}Controller));
-router.post('/', authenticate, validate(${camelName}Validator.create${pascalName}), ${camelName}Controller.create.bind(${camelName}Controller));
-router.put('/:id', authenticate, validate(${camelName}Validator.update${pascalName}), ${camelName}Controller.update.bind(${camelName}Controller));
-router.patch('/status/:id', authenticate, ${camelName}Controller.status.bind(${camelName}Controller));
-router.delete('/:id', authenticate, ${camelName}Controller.delete.bind(${camelName}Controller));
+router.get('/', authenticate, permission(moduleName, 'READ'), ${camelName}Controller.getAll.bind(${camelName}Controller));
+router.get('/:id', authenticate, permission(moduleName, 'READ'), ${camelName}Controller.getById.bind(${camelName}Controller));
+router.post('/', authenticate, permission(moduleName, 'WRITE'), validate(${camelName}Validator.create${pascalName}), ${camelName}Controller.create.bind(${camelName}Controller));
+router.put('/:id', authenticate, permission(moduleName, 'WRITE'), validate(${camelName}Validator.update${pascalName}), ${camelName}Controller.update.bind(${camelName}Controller));
+router.patch('/status/:id', authenticate, permission(moduleName, 'WRITE'), ${camelName}Controller.status.bind(${camelName}Controller));
+router.delete('/:id', authenticate, permission(moduleName, 'DELETE'), ${camelName}Controller.delete.bind(${camelName}Controller));
 
 module.exports = router;
 `;

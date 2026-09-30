@@ -13,7 +13,7 @@ const PORT = Number(process.env.PORT || config.app.port || 3000);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log('====================================');
-  console.log('AISGWB SERVER STARTED');
+  console.log('DEMO SERVER STARTED');
   console.log('PORT:', PORT);
   console.log('====================================');
 
